@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "67319955959",
+    "project_id": "emiloan-28483",
+    "storage_bucket": "emiloan-28483.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:67319955959:android:5c4659656b3ce1bde6aef2",
+        "android_client_info": {
+          "package_name": "com.example.emiloan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbZq5zrsEzk-iqSj4KvlFfBPgYn0t6i10"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
