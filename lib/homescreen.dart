@@ -24,6 +24,15 @@ class _HomescreenState extends State<Homescreen> {
     decimalDigits: 0,
     symbol: 'сўм',
   );
+
+  TextEditingController _controller2 = TextEditingController();
+
+  final CurrencyTextInputFormatter _formatter2 =
+      CurrencyTextInputFormatter.currency(
+    locale: 'uz',
+    decimalDigits: 0,
+    symbol: 'сўм',
+  );
   final NumberFormat _numberFormat =
       NumberFormat.currency(locale: 'uz_UZ', symbol: '', decimalDigits: 0);
 
@@ -114,6 +123,38 @@ class _HomescreenState extends State<Homescreen> {
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,
                               labelText: 'Пул миқдорини киритинг',
+                              labelStyle: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.money),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            inputFormatters: <TextInputFormatter>[_formatter2],
+                            controller: _controller2,
+                            keyboardType: TextInputType.number,
+                            style: TextStyle(fontSize: 14),
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              labelText: 'Бошланғич сумма',
                               labelStyle: TextStyle(fontSize: 12),
                             ),
                           ),
@@ -224,8 +265,9 @@ class _HomescreenState extends State<Homescreen> {
                         MaterialPageRoute(
                             builder: (context) => LoanDetailsScreen(
                                 startDate: _selectedDate,
-                                loanAmount:
-                                    _formatter.getUnformattedValue().toDouble(),
+                                loanAmount: (_formatter.getUnformattedValue() -
+                                        _formatter2.getUnformattedValue())
+                                    .toDouble(),
                                 interestRate: getValueByMonth(
                                         widget.creditsList,
                                         int.parse(selectMonth.split(' ')[0]))!
@@ -281,6 +323,7 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
   late int _months;
   late bool _isDecreasingPayment;
   List<Map<String, dynamic>> _loanPayments = [];
+  double _totalToBePaid = 0.0; // To hold the total amount to be paid
 
   @override
   void initState() {
@@ -299,12 +342,14 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
     double monthlyRate = _interestRate / 100 / 12;
     double remainingDebt = _loanAmount;
     DateTime paymentDate = _startDate;
+    _totalToBePaid = 0.0;
+
+    double totalPrincipalPaid = 0.0;
 
     for (int i = 1; i <= _months; i++) {
       paymentDate = paymentDate.add(Duration(days: 30));
 
       double interestPayment = remainingDebt * monthlyRate;
-
       double principalPayment;
       double totalPayment;
 
@@ -323,8 +368,13 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
         principalPayment = totalPayment - interestPayment;
       }
 
-      remainingDebt -= principalPayment;
+      // Round to nearest 1000 so'm
+      totalPayment = (totalPayment / 1000).ceil() * 1000;
 
+      remainingDebt -= principalPayment;
+      totalPrincipalPaid += principalPayment;
+
+      // Add each month's payment to the list
       _loanPayments.add({
         'paymentDate': paymentDate,
         'totalPayment': totalPayment,
@@ -333,6 +383,20 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
         'remainingDebt': remainingDebt < 0 ? 0 : remainingDebt,
       });
     }
+
+    // Adjust the last payment to include any remaining debt due to rounding
+    if (remainingDebt.abs() >= 1000) {
+      _loanPayments[_months - 1]['totalPayment'] += remainingDebt;
+      _loanPayments[_months - 1]['principal'] += remainingDebt;
+      _loanPayments[_months - 1]['remainingDebt'] = 0.0;
+      remainingDebt = 0;
+    }
+
+    _totalToBePaid = _loanPayments.fold(
+      0.0,
+      (sum, payment) => sum + payment['totalPayment'],
+    );
+    _totalToBePaid += _loanPayments.last['remainingDebt'];
   }
 
   String _formatCurrency(double value) {
@@ -340,8 +404,7 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
     value = (value / 1000).ceil() * 1000;
 
     // Format the number with spaces as thousands separators
-    final formatter =
-        NumberFormat('#,##0', 'uz_UZ'); // Use uz_UZ for correct spacing
+    final formatter = NumberFormat('#,##0', 'uz_UZ');
     return formatter.format(value);
   }
 
@@ -350,7 +413,7 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         iconTheme: IconThemeData(
-          color: Colors.white, //change your color here
+          color: Colors.white, // Change your color here
         ),
         backgroundColor: Colors.green[800],
         title: Text(
@@ -364,59 +427,88 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
           builder: (context, constraints) {
             return SingleChildScrollView(
               scrollDirection: Axis.vertical,
-              child: DataTable(
-                columnSpacing: 12,
-                columns: [
-                  DataColumn(
-                      label: Text('Cанаси', style: TextStyle(fontSize: 14))),
-                  DataColumn(
-                    label: Center(
-                        child: Text('Тўланадиган Пул',
-                            style: TextStyle(fontSize: 14))),
-                  ),
-                  DataColumn(
-                      label: Text('Қолдиқ', style: TextStyle(fontSize: 14))),
-                ],
-                rows: _loanPayments
-                    .map(
-                      (payment) => DataRow(
-                        cells: [
-                          DataCell(
-                            Row(
-                              children: [
-                                Text(
-                                    DateFormat.yMMMMd('uz_UZ')
-                                        .format(payment['paymentDate']),
-                                    style: TextStyle(fontSize: 12)),
-                                SizedBox(
-                                  width: 8,
-                                ),
-                              ],
-                            ),
-                          ),
-                          DataCell(
-                            Center(
-                              child: Row(
-                                children: [
-                                  Text(
-                                      '${_formatCurrency(payment['totalPayment'])} сўм',
-                                      style: TextStyle(fontSize: 12)),
-                                  SizedBox(
-                                    width: 8,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            Text(
-                                '${_formatCurrency(payment['remainingDebt'].toDouble())} сўм',
-                                style: TextStyle(fontSize: 12)),
-                          ),
-                        ],
+              child: Column(
+                children: [
+                  DataTable(
+                    columnSpacing: 12,
+                    columns: [
+                      DataColumn(
+                        label: Text('Cанаси', style: TextStyle(fontSize: 14)),
                       ),
-                    )
-                    .toList(),
+                      DataColumn(
+                        label: Center(
+                          child: Text('Тўланадиган Пул',
+                              style: TextStyle(fontSize: 14)),
+                        ),
+                      ),
+                      DataColumn(
+                        label: Text('Қолдиқ', style: TextStyle(fontSize: 14)),
+                      ),
+                    ],
+                    rows: _loanPayments
+                        .map(
+                          (payment) => DataRow(
+                            cells: [
+                              DataCell(
+                                Row(
+                                  children: [
+                                    Text(
+                                        DateFormat.yMMMMd('uz_UZ')
+                                            .format(payment['paymentDate']),
+                                        style: TextStyle(fontSize: 12)),
+                                    SizedBox(
+                                      width: 8,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              DataCell(
+                                Center(
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                          '${_formatCurrency(_loanPayments.last == payment ? (payment['remainingDebt'] + payment['totalPayment']) : payment['totalPayment'])} сўм',
+                                          style: TextStyle(fontSize: 12)),
+                                      SizedBox(
+                                        width: 8,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                    '${_formatCurrency(_loanPayments.last == payment ? 0 : payment['remainingDebt'].toDouble())} сўм',
+                                    style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  SizedBox(height: 20),
+                  // Add summary row with the total amount to be paid
+                  Container(
+                    alignment: Alignment.center,
+                    padding: EdgeInsets.all(10),
+                    color: Colors.grey[200],
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Жами тўланадиган сумма:',
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '${_formatCurrency(_totalToBePaid)} сўм',
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             );
           },
