@@ -15,14 +15,14 @@ class Homescreen extends StatefulWidget {
 class _HomescreenState extends State<Homescreen> {
   DateTime _selectedDate = DateTime.now();
   String selectMonth = "";
-  String creditType = "Standart";
+  String creditType = "Стандарт";
   TextEditingController _controller = TextEditingController();
 
   final CurrencyTextInputFormatter _formatter =
       CurrencyTextInputFormatter.currency(
     locale: 'uz',
     decimalDigits: 0,
-    symbol: 'so\'m',
+    symbol: 'сўм',
   );
   final NumberFormat _numberFormat =
       NumberFormat.currency(locale: 'uz_UZ', symbol: '', decimalDigits: 0);
@@ -41,7 +41,7 @@ class _HomescreenState extends State<Homescreen> {
   @override
   void initState() {
     super.initState();
-    selectMonth = "${widget.creditsList.first["month"]} oy";
+    selectMonth = "${widget.creditsList.first["month"]} ой";
   }
 
   int? getValueByMonth(List<Map<String, dynamic>> creditsList, int month) {
@@ -76,7 +76,7 @@ class _HomescreenState extends State<Homescreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Kredit olingan sana',
+                              'Кредит олинган сана',
                               style:
                                   TextStyle(fontSize: 12, color: Colors.grey),
                             ),
@@ -113,7 +113,7 @@ class _HomescreenState extends State<Homescreen> {
                               border: InputBorder.none,
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,
-                              labelText: 'Pul miqdorini kiriting',
+                              labelText: 'Пул миқдорини киритинг',
                               labelStyle: TextStyle(fontSize: 12),
                             ),
                           ),
@@ -135,8 +135,8 @@ class _HomescreenState extends State<Homescreen> {
                   itemBuilder: (BuildContext context) {
                     return widget.creditsList.map((credit) {
                       return PopupMenuItem<String>(
-                        value: '${credit["month"]} oy',
-                        child: Text('${credit["month"]} oy'),
+                        value: '${credit["month"]} Ой',
+                        child: Text('${credit["month"]} Ой'),
                       );
                     }).toList();
                   },
@@ -151,7 +151,7 @@ class _HomescreenState extends State<Homescreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Oy",
+                                "Муддат",
                                 style:
                                     TextStyle(fontSize: 12, color: Colors.grey),
                               ),
@@ -179,12 +179,12 @@ class _HomescreenState extends State<Homescreen> {
                   itemBuilder: (BuildContext context) {
                     return const [
                       PopupMenuItem(
-                        child: Text("Standart"),
-                        value: 'Standart',
+                        child: Text("Стандарт"),
+                        value: 'Стандарт',
                       ),
                       PopupMenuItem(
-                        child: Text("Kamayuvchi"),
-                        value: 'Kamayuvchi',
+                        child: Text("Камаювчи"),
+                        value: 'Камаювчи',
                       ),
                     ];
                   },
@@ -199,7 +199,7 @@ class _HomescreenState extends State<Homescreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Kredit turi",
+                                "Кредит тури",
                                 style:
                                     TextStyle(fontSize: 12, color: Colors.grey),
                               ),
@@ -232,18 +232,18 @@ class _HomescreenState extends State<Homescreen> {
                                     .toDouble(),
                                 months: int.parse(selectMonth.split(' ')[0]),
                                 isDecreasingPayment:
-                                    creditType != "Standart")));
+                                    creditType != "Стандарт")));
                   },
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      "Kreditni hisoblash",
+                      "Кредитни ҳисоблаш",
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
                   style: ButtonStyle(
                       backgroundColor:
-                          WidgetStatePropertyAll(Colors.deepPurple)),
+                          WidgetStatePropertyAll(Colors.green[800])),
                 ),
               )
             ],
@@ -349,7 +349,14 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Kredit Tafsilotlari'),
+        iconTheme: IconThemeData(
+          color: Colors.white, //change your color here
+        ),
+        backgroundColor: Colors.green[800],
+        title: Text(
+          'Техно Ҳамкор',
+          style: TextStyle(color: Colors.white),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -361,16 +368,14 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
                 columnSpacing: 12,
                 columns: [
                   DataColumn(
-                      label: Text('To\'lash sanasi',
-                          style: TextStyle(fontSize: 14))),
+                      label: Text('Cанаси', style: TextStyle(fontSize: 14))),
                   DataColumn(
                     label: Center(
-                        child: Text('To‘lanadigan miqdor',
+                        child: Text('Тўланадиган Пул',
                             style: TextStyle(fontSize: 14))),
                   ),
                   DataColumn(
-                      label:
-                          Text('Umumiy qoldi', style: TextStyle(fontSize: 14))),
+                      label: Text('Қолдиқ', style: TextStyle(fontSize: 14))),
                 ],
                 rows: _loanPayments
                     .map(
@@ -394,7 +399,7 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
                               child: Row(
                                 children: [
                                   Text(
-                                      '${_formatCurrency(payment['totalPayment'])} so\'m',
+                                      '${_formatCurrency(payment['totalPayment'])} сўм',
                                       style: TextStyle(fontSize: 12)),
                                   SizedBox(
                                     width: 8,
@@ -405,7 +410,7 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
                           ),
                           DataCell(
                             Text(
-                                '${_formatCurrency(payment['remainingDebt'].toDouble())} so\'m',
+                                '${_formatCurrency(payment['remainingDebt'].toDouble())} сўм',
                                 style: TextStyle(fontSize: 12)),
                           ),
                         ],
