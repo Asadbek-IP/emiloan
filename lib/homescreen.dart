@@ -15,7 +15,7 @@ class Homescreen extends StatefulWidget {
 class _HomescreenState extends State<Homescreen> {
   DateTime _selectedDate = DateTime.now();
   String selectMonth = "";
-  String creditType = "Стандарт";
+  String creditType = "Ишлайман";
   TextEditingController _controller = TextEditingController();
 
   final CurrencyTextInputFormatter _formatter =
@@ -84,7 +84,7 @@ class _HomescreenState extends State<Homescreen> {
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            const Text(
                               'Кредит олинган сана',
                               style:
                                   TextStyle(fontSize: 12, color: Colors.grey),
@@ -110,7 +110,7 @@ class _HomescreenState extends State<Homescreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Row(
                       children: [
-                        Icon(Icons.monetization_on_outlined),
+                        const Icon(Icons.monetization_on_outlined),
                         SizedBox(width: 12),
                         Expanded(
                           child: TextField(
@@ -220,12 +220,12 @@ class _HomescreenState extends State<Homescreen> {
                   itemBuilder: (BuildContext context) {
                     return const [
                       PopupMenuItem(
-                        child: Text("Стандарт"),
-                        value: 'Стандарт',
+                        child: Text("Ишлайман"),
+                        value: 'Ишлайман',
                       ),
                       PopupMenuItem(
-                        child: Text("Камаювчи"),
-                        value: 'Камаювчи',
+                        child: Text("Ишсизман"),
+                        value: 'Ишсизман',
                       ),
                     ];
                   },
@@ -234,13 +234,13 @@ class _HomescreenState extends State<Homescreen> {
                       padding: EdgeInsets.all(8.0),
                       child: Row(
                         children: [
-                          Icon(Icons.view_compact_alt_outlined),
+                          Icon(Icons.business_center_outlined),
                           SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Кредит тури",
+                                "Ижтимоий ҳолат",
                                 style:
                                     TextStyle(fontSize: 12, color: Colors.grey),
                               ),
@@ -260,21 +260,38 @@ class _HomescreenState extends State<Homescreen> {
                 padding: const EdgeInsets.all(8.0),
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => LoanDetailsScreen(
-                                startDate: _selectedDate,
-                                loanAmount: (_formatter.getUnformattedValue() -
-                                        _formatter2.getUnformattedValue())
-                                    .toDouble(),
-                                interestRate: getValueByMonth(
-                                        widget.creditsList,
-                                        int.parse(selectMonth.split(' ')[0]))!
-                                    .toDouble(),
-                                months: int.parse(selectMonth.split(' ')[0]),
-                                isDecreasingPayment:
-                                    creditType != "Стандарт")));
+                    if (creditType == "Ишсизман" &&
+                        _formatter2.getUnformattedValue() <
+                            _formatter.getUnformattedValue() * 0.3) {
+                      final snackBar = SnackBar(
+                        content: Text(
+                            'Ишсиз бўлсангиз бошланғич маблағ ${_formatter.getUnformattedValue() * 0.3} сўм мажбурий киритишигиз керак'),
+                      );
+
+                      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+
+                      setState(() {
+                        _controller2.text = _formatter2.formatString(
+                            "${(_formatter.getUnformattedValue() * 0.3).toInt()}");
+                      });
+                      return;
+                    } else {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => LoanDetailsScreen(
+                                  startDate: _selectedDate,
+                                  loanAmount:
+                                      (_formatter.getUnformattedValue() -
+                                              _formatter2.getUnformattedValue())
+                                          .toDouble(),
+                                  interestRate: getValueByMonth(
+                                          widget.creditsList,
+                                          int.parse(selectMonth.split(' ')[0]))!
+                                      .toDouble(),
+                                  months: int.parse(selectMonth.split(' ')[0]),
+                                  isDecreasingPayment: false)));
+                    }
                   },
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
@@ -299,7 +316,7 @@ class _HomescreenState extends State<Homescreen> {
 class LoanDetailsScreen extends StatefulWidget {
   final DateTime startDate;
   final double loanAmount; // Total loan amount
-  final double interestRate; // Interest rate
+  final double interestRate; // Interest rate (in percentage)
   final int months; // Duration in months
   final bool isDecreasingPayment; // Payment structure type
 
@@ -322,8 +339,8 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
   late double _interestRate;
   late int _months;
   late bool _isDecreasingPayment;
-  List<Map<String, dynamic>> _loanPayments = [];
-  double _totalToBePaid = 0.0; // To hold the total amount to be paid
+  List<Map<String, dynamic>> _installmentPayments = [];
+  double _totalPayableAmount = 0.0; // Total amount to be paid
 
   @override
   void initState() {
@@ -334,76 +351,81 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
     _months = widget.months;
     _isDecreasingPayment = widget.isDecreasingPayment;
 
-    _calculateLoanPayments();
+    _calculateInstallmentPayments();
   }
 
-  void _calculateLoanPayments() {
-    _loanPayments.clear();
-    double monthlyRate = _interestRate / 100 / 12;
-    double remainingDebt = _loanAmount;
+  void _calculateInstallmentPayments() {
+    _installmentPayments.clear();
+
+    // Umumiy qarz (asosiy qarz + foiz)
+    _totalPayableAmount = _loanAmount + (_loanAmount * (_interestRate / 100));
+    double remainingDebt = _totalPayableAmount;
     DateTime paymentDate = _startDate;
-    _totalToBePaid = 0.0;
 
-    double totalPrincipalPaid = 0.0;
+    // To'lov sanasini aniqlash
+    if (_startDate.day <= 15) {
+      // Agar 15-sanasigacha kredit olingan bo'lsa, keyingi oyning 1-sanasidan boshlanadi
+      paymentDate = DateTime(_startDate.year, _startDate.month + 1, 1);
+    } else {
+      // Agar 15-sanasidan keyin kredit olingan bo'lsa, keyingi oyning 15-sanasidan boshlanadi
+      paymentDate = DateTime(_startDate.year, _startDate.month + 1, 15);
+    }
 
-    for (int i = 1; i <= _months; i++) {
-      paymentDate = paymentDate.add(Duration(days: 30));
+    if (_isDecreasingPayment) {
+      // Kamayuvchi to'lov struktura: asosiy qarz qismi bir xil, foiz kamayib boradi
+      double principalPayment = _loanAmount / _months;
+      double monthlyRate = _interestRate / 100 / 12;
 
-      double interestPayment = remainingDebt * monthlyRate;
-      double principalPayment;
-      double totalPayment;
+      for (int i = 1; i <= _months; i++) {
+        // Har oyga 30 kun qo'shamiz
+        paymentDate = paymentDate.add(Duration(days: 30));
 
-      if (_isDecreasingPayment) {
-        principalPayment = (_loanAmount / _months);
-        totalPayment = principalPayment + interestPayment;
+        // Qolgan qarz asosida foizni hisoblaymiz
+        double interestPayment = remainingDebt * monthlyRate;
 
-        if (totalPayment > remainingDebt) {
-          totalPayment = remainingDebt + interestPayment;
-          principalPayment = remainingDebt;
-        }
-      } else {
-        double monthlyPayment =
-            (_loanAmount * monthlyRate) / (1 - pow(1 + monthlyRate, -_months));
-        totalPayment = monthlyPayment;
-        principalPayment = totalPayment - interestPayment;
+        // Umumiy to'lov (asosiy qarz + foiz)
+        double totalPayment = principalPayment + interestPayment;
+
+        // Asosiy qarzni qolgan qarzdan olib tashlaymiz
+        remainingDebt -= principalPayment;
+
+        // To'lovni 1000 so'mga yaxlitlaymiz
+        totalPayment = (totalPayment / 1000).ceil() * 1000;
+
+        _installmentPayments.add({
+          'paymentDate': paymentDate,
+          'totalPayment': totalPayment,
+          'remainingDebt': remainingDebt < 0 ? 0 : remainingDebt,
+        });
       }
+    } else {
+      // Teng to'lov struktura: har oylik to'lovlar bir xil
+      double monthlyPayment = _totalPayableAmount / _months;
+      monthlyPayment = (monthlyPayment / 1000).ceil() * 1000;
 
-      // Round to nearest 1000 so'm
-      totalPayment = (totalPayment / 1000).ceil() * 1000;
+      for (int i = 1; i <= _months; i++) {
+        // Har oyga 30 kun qo'shamiz
+        paymentDate = paymentDate.add(Duration(days: 30));
 
-      remainingDebt -= principalPayment;
-      totalPrincipalPaid += principalPayment;
+        // Oxirgi oyda qolgan qarzni o'zgartiramiz
+        double actualPayment = monthlyPayment;
+        if (i == _months) {
+          actualPayment = remainingDebt;
+        }
 
-      // Add each month's payment to the list
-      _loanPayments.add({
-        'paymentDate': paymentDate,
-        'totalPayment': totalPayment,
-        'principal': principalPayment,
-        'interest': interestPayment,
-        'remainingDebt': remainingDebt < 0 ? 0 : remainingDebt,
-      });
+        remainingDebt -= actualPayment;
+
+        _installmentPayments.add({
+          'paymentDate': paymentDate,
+          'totalPayment': actualPayment,
+          'remainingDebt': remainingDebt < 0 ? 0 : remainingDebt,
+        });
+      }
     }
-
-    // Adjust the last payment to include any remaining debt due to rounding
-    if (remainingDebt.abs() >= 1000) {
-      _loanPayments[_months - 1]['totalPayment'] += remainingDebt;
-      _loanPayments[_months - 1]['principal'] += remainingDebt;
-      _loanPayments[_months - 1]['remainingDebt'] = 0.0;
-      remainingDebt = 0;
-    }
-
-    _totalToBePaid = _loanPayments.fold(
-      0.0,
-      (sum, payment) => sum + payment['totalPayment'],
-    );
-    _totalToBePaid += _loanPayments.last['remainingDebt'];
   }
 
   String _formatCurrency(double value) {
-    // Round value to the nearest thousand
-    value = (value / 1000).ceil() * 1000;
-
-    // Format the number with spaces as thousands separators
+    value = (value / 1000).ceil() * 1000; // Round to nearest 1000 so'm
     final formatter = NumberFormat('#,##0', 'uz_UZ');
     return formatter.format(value);
   }
@@ -412,101 +434,50 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.white, // Change your color here
-        ),
-        backgroundColor: Colors.green[800],
-        title: Text(
-          'Техно Ҳамкор',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: Text('Техно Ҳамкор'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
-              scrollDirection: Axis.vertical,
               child: Column(
                 children: [
                   DataTable(
                     columnSpacing: 12,
                     columns: [
                       DataColumn(
-                        label: Text('Cанаси', style: TextStyle(fontSize: 14)),
-                      ),
+                          label: Text('Сана', style: TextStyle(fontSize: 14))),
                       DataColumn(
-                        label: Center(
-                          child: Text('Тўланадиган Пул',
-                              style: TextStyle(fontSize: 14)),
-                        ),
-                      ),
+                          label: Text('Тўланадиган пул',
+                              style: TextStyle(fontSize: 14))),
                       DataColumn(
-                        label: Text('Қолдиқ', style: TextStyle(fontSize: 14)),
-                      ),
+                          label: Text('Умумий қарз',
+                              style: TextStyle(fontSize: 14))),
                     ],
-                    rows: _loanPayments
+                    rows: _installmentPayments
                         .map(
                           (payment) => DataRow(
                             cells: [
-                              DataCell(
-                                Row(
-                                  children: [
-                                    Text(
-                                        DateFormat.yMMMMd('uz_UZ')
-                                            .format(payment['paymentDate']),
-                                        style: TextStyle(fontSize: 12)),
-                                    SizedBox(
-                                      width: 8,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              DataCell(
-                                Center(
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                          '${_formatCurrency(_loanPayments.last == payment ? (payment['remainingDebt'] + payment['totalPayment']) : payment['totalPayment'])} сўм',
-                                          style: TextStyle(fontSize: 12)),
-                                      SizedBox(
-                                        width: 8,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              DataCell(
-                                Text(
-                                    '${_formatCurrency(_loanPayments.last == payment ? 0 : payment['remainingDebt'].toDouble())} сўм',
-                                    style: TextStyle(fontSize: 12)),
-                              ),
+                              DataCell(Text(
+                                  DateFormat.yMMMMd('uz_UZ')
+                                      .format(payment['paymentDate']),
+                                  style: TextStyle(fontSize: 12))),
+                              DataCell(Text(
+                                  '${_formatCurrency(payment['totalPayment'])} сўм',
+                                  style: TextStyle(fontSize: 12))),
+                              DataCell(Text(
+                                  '${_formatCurrency(payment['remainingDebt'].toDouble())} сўм',
+                                  style: TextStyle(fontSize: 12))),
                             ],
                           ),
                         )
                         .toList(),
                   ),
-                  SizedBox(height: 20),
-                  // Add summary row with the total amount to be paid
-                  Container(
-                    alignment: Alignment.center,
-                    padding: EdgeInsets.all(10),
-                    color: Colors.grey[200],
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Жами тўланадиган сумма:',
-                          style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          '${_formatCurrency(_totalToBePaid)} сўм',
-                          style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Умумий Тўланадиган Пул: ${_formatCurrency(_totalPayableAmount)} сўм',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ],
               ),
