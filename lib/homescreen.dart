@@ -360,9 +360,9 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
     // Umumiy qarz (asosiy qarz + foiz)
     _totalPayableAmount = _loanAmount + (_loanAmount * (_interestRate / 100));
     double remainingDebt = _totalPayableAmount;
-    DateTime paymentDate = _startDate;
 
     // To'lov sanasini aniqlash
+    DateTime paymentDate;
     if (_startDate.day <= 15) {
       // Agar 15-sanasigacha kredit olingan bo'lsa, keyingi oyning 1-sanasidan boshlanadi
       paymentDate = DateTime(_startDate.year, _startDate.month + 1, 1);
@@ -377,8 +377,12 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
       double monthlyRate = _interestRate / 100 / 12;
 
       for (int i = 1; i <= _months; i++) {
-        // Har oyga 30 kun qo'shamiz
-        paymentDate = paymentDate.add(Duration(days: 30));
+        // To'lov sanasi har oyni 1 yoki 15 sanasida bo'lishi kerak
+        if (paymentDate.day == 1) {
+          paymentDate = DateTime(paymentDate.year, paymentDate.month + 1, 1);
+        } else {
+          paymentDate = DateTime(paymentDate.year, paymentDate.month + 1, 15);
+        }
 
         // Qolgan qarz asosida foizni hisoblaymiz
         double interestPayment = remainingDebt * monthlyRate;
@@ -404,8 +408,12 @@ class _LoanDetailsScreenState extends State<LoanDetailsScreen> {
       monthlyPayment = (monthlyPayment / 1000).ceil() * 1000;
 
       for (int i = 1; i <= _months; i++) {
-        // Har oyga 30 kun qo'shamiz
-        paymentDate = paymentDate.add(Duration(days: 30));
+        // To'lov sanasi har oyni 1 yoki 15 sanasida bo'lishi kerak
+        if (paymentDate.day == 1) {
+          paymentDate = DateTime(paymentDate.year, paymentDate.month + 1, 1);
+        } else {
+          paymentDate = DateTime(paymentDate.year, paymentDate.month + 1, 15);
+        }
 
         // Oxirgi oyda qolgan qarzni o'zgartiramiz
         double actualPayment = monthlyPayment;
